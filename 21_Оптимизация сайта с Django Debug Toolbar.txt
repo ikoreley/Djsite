@@ -1,0 +1,75 @@
+урок
+https://www.youtube.com/watch?v=qnJ8FJf9RGA&list=PLA0M1Bcd0w8xO_39zZll2u1lz_Q-Mwn1F&index=21
+
+!!!!**** ЕСЛИ НЕ ОТОБРАЖАЕТСЯ django-debug-toolbar , то
+        win+r -> regedit -> \HKEY_CLASSES_ROOT\.js -> в Content Type прописать значение: text/javascript
+        перегрузить и заработало, но в Opere так и нет.
+
+        Анализ работы нашего приложения
+        -установим:
+            pip install django-debug-toolbar
+
+        -как инсталировать и работать:
+            https://django-debug-toolbar.readthedocs.io/en/latest/installation.html
+
+        1. В settings.py в списке "INSTALLED_APPS" перед 'women.apps.WomenConfig' пропишем
+            "debug_toolbar",
+
+        2. в список "MIDDLEWARE" пропишем
+            "debug_toolbar.middleware.DebugToolbarMiddleware",
+
+        3. Пропишем IP с которым будет работать "debug_toolbar"
+            INTERNAL_IPS = ["127.0.0.1"]
+
+        4. Добавим маршруты к нашему приложению в "coolsite/coolsite/urls.py " в условие "if settings.DEBUG:"
+            urlpatterns = [path('__debug__/', include(debug_toolbar.urls))] + urlpatterns
+
+        импортируем в "if settings.DEBUG:" --> "import debug_toolbar" , потомучто вне дебага он не используется
+
+        Проверим работу debug запускаем сервер и НЕЗАРАБОТАЛО
+        ВЗЯЛ НОВЫЙ ПРОФИЛЬ БРАУЗЕРА , УБРАЛ ВСЕ РАСШИРЕНИЯ , И ЗАРАБОТАЛО
+
+----------------------------
+        в "debug_toolbar" в поле SQL видим 7 запросов (на видео 17), в запросах видим что есть на  "women_category"
+    - в шаблоне 'index.html' в Категории мы обращаемся к переменной 'p.cat'
+    т.е. берем Категорию из 'p' которая является ссылкой на запись из таблицы 'women'
+    если уберем строчку <p class="first">Категория: {{p.cat}}</p> и у меня ничего не изменилось, а на видео запросы уменьшились.
+    Это возникает из-за "ленивых"-отложенных запросов, которые мы берем только когда они понадабятся и
+    это хорошо на единичных эдементах, но когда их много лучше делать по другому.
+        - есть два метода
+            * select_related(key) - "жадная" загрузка связанных данных по внешнему ключу key,
+            который имеет тип ForeignKey;
+
+            *prefetch_related(key) - "жадная" загрузка связанных данных по внешнему ключу key,
+            который имеет тип ManyToManyField.
+
+        - Для нашего проекта подойдет "ForeignKey", он уже использается в переменной 'cat' в нашей модели
+         в файле views.py -> "class WomenHome" -> def get_queryset добавим
+                    .select_related('cat')      # произведем жадный запрос
+    чтоб совместно с Women.objects.filter(is_published=True) были загружены Категории
+    И теперь при обоаботке в 'index.html'->  <p class="first">Категория: {{p.cat}}</p> не будет производится запросов в базу данных
+            Ну и ТЕПЕРЬ на главной странице у нас всего 4 запроса  ---------------------
+----------------------------------------------------------------------------------------
+        ----Сделаем эту оптимизацию в "Актрисы" и "Певицы"
+    - в views.py -> "class WomenCategory" в "def get_queryset" также пропишем .select_related('cat')
+return Women.objects.filter(cat__slug=self.kwargs['cat_slug'],is_published=True).select_related('cat')
+---- И запросы уменьшились с 13(14) до 7
+        ----Но есть дубли из-за
+        в "class WomenCategory"->"def get_context_data" строка
+c_def = self.get_user_context(title='Категория - '+str(context['posts'][0].cat),cat_selected=context['posts'][0].cat_id)
+            и в ней мы обращаемся к *.cat и *.cat_id , ОПТИМИЗИРУЕМ ЭТУ СТРОКУ
+    ----Из двух отложенных запросов сделаем один и с него считаем данные
+    Прочитаем категорию из таблицы категорий и пропишем условие по слагу берем категорию для которой выводим список
+    c = Category.objects.get(slug=self.kwargs['cat_slug'])
+    и поменяем контексты на, c.name(потомучто там название категории в поле "name")  и c.pk
+
+    c_def = self.get_user_context(title='Категория - '+str(c.name),
+                                      cat_selected=c.pk)
+
+        все ДУБЛЕЙ НЕТ оптимизировали  "Актрисы" и "Певицы"
+___________________________________________________________________________________________________________________
+
+
+
+
+

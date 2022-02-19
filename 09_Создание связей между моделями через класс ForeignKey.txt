@@ -1,0 +1,186 @@
+урок
+https://www.youtube.com/watch?v=tzl1uklqM20&list=PLA0M1Bcd0w8xO_39zZll2u1lz_Q-Mwn1F&index=9
+
+
+Django имеет Три специальных класса для организации связей / https://djbook.ru/rel3.0/topics/db/models.html#relationships
+* ForeignKey - для связей Many to One (поля отношений)
+* ManyToManyField - для связей Many to Many (многие ко многим) -/ в основном используется для определения тегов
+* OneToOneField - для связей One to One (один к одному) -/ редко используется
+
+
+    Определяем еще одну модель(таблицу) 'category' и свяжем ее с таблицей постов 'women' модели(class Women)
+создадим поле cat_id(суффикс _id джанго сам добавит) в class Women
+связывать будем при помощи ForeignKey
+'category' -  будет первичной, 'women' - вторичной
+ForeignKey(<ссылка на первичную модель>, on_delete=<ограничения при удалении>)
+            <ограничения при удалении> расписаны в файле- 09_ForeignKey( on_delete ).png
+            а также по ссылке выше
+
+в models.py добавляем еще одну модель(class Category)
+в 'class Women' добавляем ->  cat = models.ForeignKey('Category', on_delete=models.PROTECT)
+    создадим новую миграцию для перестройки структуры DB (базы данных)
+PS D:\DjangoSelfedu\Djsite\coolsite> python manage.py makemigrations
+  и получим Please select a fix:
+        1) Provide a one-off default now (will be set on all existing rows with a null value for this column)
+        2) Quit and manually define a default value in models.py.
+  нажмем пока 2 и выйдем.
+  Это все потому что -> cat = models.ForeignKey('Category', on_delete=models.PROTECT) ссылается на категорию которой еще нет и нет еще таблицы
+  Для этого пропишем-> cat = models.ForeignKey('Category', on_delete=models.PROTECT, null=True)
+  и снова запустим -> python manage.py makemigrations
+        Migrations for 'women':
+        women\migrations\0002_category_women_cat.py
+            - Create model Category
+            - Add field cat to women
+  появился новый файл ->  women/migrations/0002_category_women_cat.py
+
+Выполним миграци-> python manage.py migrate
+        Operations to perform:
+    Apply all migrations: admin, auth, contenttypes, sessions, women
+        Running migrations:
+    Applying women.0002_category_women_cat... OK
+
+создали обновили таблицы в базе данных - women_category и women_women
+---------------------------------------------------------------------
+Такое изменение Базы_Данных это крайний шаг и не стоит так делать   =
+А лучше сразу проектировать таблицы Базы_Данных                     =
+---------------------------------------------------------------------
+
+    Добавим 2 категории в таблицу 'women_category'
+-> PS D:\DjangoSelfedu\Djsite\coolsite> python manage.py shell
+>>> from women.models import *
+>>> Category.objects.create(name='Актрисы')
+<Category: Актрисы>
+>>> Category.objects.create(name='Певицы')
+<Category: Певицы>
+-- зайдем в базу данных, обновим и увидим эти созданные поля
+-- в таблице 'women_women' в поле 'cat id' проставим '1' единицы (будет означать что они относятся к <Category: Актрисы>)
+>>> w_list = Women.objects.all()  # выбираем из таблицы список всех записей
+>>> w_list.update(cat_id=1)       # изменяем значения поля 'cat_id' на 1
+5                                 # проставлено в 5 полях
+-- зайдем в базу данных, обновим и увидим изменения
+---------------------------------------------------
+>>> Women.title
+<django.db.models.query_utils.DeferredAttribute object at 0x000001EFB26A1660>
+По сути class Women(models.Model): состоит из классов , атрибуты которые прописываем в классе являются классами(объектами)
+    title = models.CharField    ---> CharField  является классом
+    content = models.TextField  ---> и TextField  тоже является классом и так далее по полям
+
+когда мы создаем экземпляр класса у него создаются свои локальные свойства с теми же именами класса никак не связанными с другими
+ Такое поведения создадния экземпляров класса берется из конструктора 'models.Model' базового класса
+--------------------------------------------------------------------------------------------
+
+к примеру:
+>>> from women.models import *
+>>> w1=Women(title='t1', content='c1', cat_id=1)
+это все еще не созданно и не записано в базу данных
+>>> from django.db import connection
+>>> connection.queries
+[]
+>>> w1.title
+'t1'
+>>> connection.queries
+[]
+>>> w1.cat             # но на атрибут ссылающийся на другую модель Джанго автоматом сделал запрос в БД и выдал Данные
+<Category: Актрисы>
+>>> connection.queries
+[{'sql': 'SELECT "women_category"."id", "women_category"."name" FROM "women_category" WHERE "women_category"."id" = 1 LIMIT 21', 'time': '0.000'}]
+
+------------------------------------------------------------------------------------------------------------
+
+Теперь сделаем отображение списка категорий в base.html , вставим код ниже
+<!-- Sidebar слева -->
+	<td valign="top" class="left-chapters">
+	<ul id="leftchapters">
+{% if cat_selected == 0 %}
+		<li class="selected">Все категории</li>
+{% else %}
+		<li><a href="{% url 'home_redirect' %}">Все категории</a></li>
+{% endif %}
+
+{% for c in cats %}
+	{% if c.pk == cat_selected %}
+		<li class="selected">{{c.name}}</li>
+	{% else %}
+		<li><a href="{{ c.get_absolute_url }}" >{{c.name}}</a></li>
+	{% endif %}
+{% endfor %}
+------Далее пропишем в models.py в 'class Category' метод 'get_absolute_url'
+            def get_absolute_url(self):
+                return reverse('category', kwargs={'cat_id': self.pk})
+   в файле urls.py прописываем маршрут
+            path('category/<int:cat_id>/', show_category, name='category')
+   в файле views.py прописываем фунцию  'show_category'
+            def show_category(request, cat_id): #
+                return HttpResponse(f"Отображение категории с id = {cat_id}")
+----------------
+Чтоб заработало в base.html нам нужно передать коллекции в файле views.py в метод 'index'
+            def index(request):
+                ......
+                cats = Category.objects.all()
+
+                paramm = {
+                    .....
+                    'cats': cats,
+                    .....
+                    'cat_selected': 0,
+                    }
+---запустим страницу проверим, все работает
+------Теперь в файле views.py модифицируем функцию 'def show_category' скопируем в нее тело из 'def index' и подправим
+
+ПРИ несуществующей категории у отображается пустая страница, а лучше сделать страницу '404'
+    сделаем если категория окажется пустой то вывод будет на страницу '404'
+    в файле views.py в 'def show_category' пропишем условие
+                if len(posts) == 0:   #
+                    raise Http404()
+добавим на странице  отображение категории и время создания поста, в файле index.html пропишем
+        <ul class="list-articles">
+	    {% for p in posts %}
+			    <li><div class="article-panel">
+	    <p class="first">Категория: {{p.cat}}</p>
+	    <p class="last">Дата: {{p.time_update|date:"d-m-Y H:i:s"}}</p>
+    </div>
+				    <h2>{{p.title}}</h2>
+
+
+
+
+И ПОЛУЧВАЕТСЯ ФУНКЦИИ 'def index' И def show_category' ПОЛУЧАЮТСЯ ПОХОЖИ И НАРУШАЮТ ПРИНЦИП -DRY- НЕ ПОВТОРЯЙСЯ
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

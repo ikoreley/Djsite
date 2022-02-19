@@ -1,0 +1,137 @@
+урок
+https://www.youtube.com/watch?v=Sut1s4LdMG0&list=PLA0M1Bcd0w8xO_39zZll2u1lz_Q-Mwn1F&index=10
+
+_______________Начало работы с Админ панелью
+___запускаем сервер
+PS D:\DjangoSelfedu\Djsite\coolsite> python manage.py runserver
+переходим-> http://127.0.0.1:8000/admin/
+    чтоб сделать панель на РУС переходим в файл-> coolsite\coolsite\settings.py
+    меняем LANGUAGE_CODE = 'en-us' на LANGUAGE_CODE = 'ru' , перегружаем страницу
+
+___добавляем супер пользователя
+заходим в терминал-> PS D:\DjangoSelfedu\Djsite\coolsite> python manage.py createsuperuser
+        Имя пользователя (leave blank to use 'ikore'): ik
+        Адрес электронной почты: ikoreley@list.ru
+        Password: kioku
+        Password (again):
+        Введённый пароль слишком короткий. Он должен содержать как минимум 8 символов.
+        Bypass password validation and create user anyway? [y/N]: y
+Готово.
+
+___регистрируем приложение 'women' в админ панели
+в файле coolsite/women/admin.py
+        from .models import *  # импортируем все модели
+        admin.site.register(Women)
+обновляем страницу админ панели и видим добавленное приложение, статьи и кнопку посмотреть на сайте,
+она появляется благодаря прописанной функции 'def get_absolute_url' в файле models.py
+эта функция используется модулями Джанго и поэтому желательно ее прописывать и не менять название
+
+___подправим Админ панель-------
+в файле models.py в 'class Women' пропишем вложенный класс meta
+            class Meta:
+                verbose_name = 'Известные женщины'
+                verbose_name_plural = 'Известные женщины' # убирает автоматическую подстановку 's' Джанго множественного названия
+сделаем сортировку названий по времени создания записи
+            в class Meta добавляем атрибут
+               ordering = ['time_create', 'title'] # порядок сортировки
+            можно ивентировать знаком '-' ['-time_create', 'title']
+поменяем название приложения «Women» на "Женщины мира"
+            в файле apps.py в 'class WomenConfig' добавим
+                verbose_name = 'Женщины мира'
+            это переименование сработает только если в settings.py мы регистрировали 'women.apps.WomenConfig'
+            мы добавили в список INSTALLED_APPS строку 'women.apps.WomenConfig'
+в списке статей добавим еще полей, в admin.py добавим класс
+            class WomenAdmin(admin.ModelAdmin):
+                list_display = ('id', 'title', 'time_create', 'photo', 'is_published')
+                list_display_links = ('id', 'title')
+                search_fields = ('title', 'content')
+            в классе можем прописать и другие атрибуты их много и можно ознакомится в документации
+        и этот класс указываем в регистрации вторым параметром -> admin.site.register(Women, WomenAdmin)
+поменяем названия отображения полей
+        в models.py в 'class Women' в атрибутах дополнительно в параметрах пропишем -->  verbose_name=""
+            title = models.CharField(max_length=255, verbose_name="Заголовок")
+        также поменяем остальные заголовки "Текст статьи, Фото, Время создания, Время изменения, Публикация, Категории"
+И по анологии зарегистрируем вторую модель class Category(models.Model)
+в файле coolsite/women/admin.py
+        class CategoryAdmin(admin.ModelAdmin):
+            list_display = ('id', 'name')
+            list_display_links = ('id', 'name')
+            search_fields = ('name', ) # запятая обязательно потомучто передаем кортеж
+
+        admin.site.register(Category, CategoryAdmin)
+
+    в файле models.py в 'class Category' пропишем вложенный класс meta
+            class Meta:
+                verbose_name = 'Категория'
+                verbose_name_plural = 'Категории' # убирает автоматическую подстановку 's' Джанго множественного названия
+                ordering = ['id']
+    поменяем отображение verbose_name=
+            class Category(models.Model):
+                name = models.CharField(max_length=100, db_index=True, verbose_name='Категория')
+_______
+=============  Внесенные изменения наименований моделей желательно внести в базу данных
+    ПЕРВОЙ командой: создаем файл миграции PS D:\DjangoSelfedu\Djsite\coolsite> python manage.py makemigrations
+        создался файл-> 0003_alter_category_options_alter_women_options_and_more.py
+    ВТОРОЙ командой: применим все эти изменения-> python manage.py migrate
+=============
+
+____СОЗДАДИМ при помощи админ панели новую запись
+    нажали плюсик, написали заголовок, вставили текст из википедии, вставили фото, Короче все Интуитивно
+    при добавлении фото создались папки и фото сохранилось по пути coolsite/media/photos/2022/02/04/ariana.jpg
+Фраемворк Джанго сам все сделал автомотически_____
+----------
+
+    теперь поправим отображение картинки непосредственно в шаблоне(файле) index.html в списке наших статей
+{% if p.poto %}   # проверяем есть ли фото
+	<p><img class="img-article-left thumb" src="{{p.photo.url}}"></p>
+{% endif %}
+
+
+------Сделаем поле "Публикация" редактируемым
+        в файле admin.py в 'class WomenAdmin(admin.ModelAdmin)' добавим еще атрибут
+        list_editable = ('is_published',)
+Добавим поля для редактирования списка статей
+        list_filter = ('is_published', 'time_create')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,126 @@
+урок
+https://www.youtube.com/watch?v=5oy0uXpYakg&list=PLA0M1Bcd0w8xO_39zZll2u1lz_Q-Mwn1F&index=17
+
+Mixin - придуманы для единообразного оперирования объектами
+        применяют когда надо к уже существующей иерархии добавить какиенибудь общие для
+        разнородных классов данные и методы
+
+В python можно добавлять Mixin в виде базового класса
+добавлять его нужно в начале класса т.к. нужно чтоб обрабатывался первым
+    ПРИМЕР: class WomenHome(DataMixin, ListView):   если будут повторятся атрибуты, то возьмутся из DataMixin
+
+    В нашей модели "WomenHome" есть повторяющиеся атрибуты, заменим их "Mixin"
+
+        1. Обычно все вспомогательные и дополнительные классы прописываются в отдельном файле
+    - создадим файл - utils.py
+    - перенесем словарь menu из views.py
+    -создадим класс "DataMixin" , импортируем-> from .models import *
+class DataMixin:
+    # метод создает контекст для шаблона по умолчанию
+    def get_user_context(self, **kwargs):
+        context = kwargs               # формируем словарь из переданных параметров
+        cats = Category.objects.all()  # формируем список категорий
+        context['menu'] = menu
+        context['cats'] = cats
+        if 'cat_selected' not in context:
+            context['cat_selected'] = 0  # делает нажатой "Все категории" на главной странице
+        return context
+
+        2. так как в этом классе мы создаем категории "cats = Category.objects.all()", то  в файле base.html
+    уберем {% show_categories 'name' cat_selected %} и вернем как было раньше
+        {% for c in cats %}
+            {% if c.pk == cat_selected %}
+                <li class="selected">{{c.name}}</li>  <!--либо выбранную рубрику как текст-->
+            {% else %}
+                <li><a href="{{ c.get_absolute_url }}" >{{c.name}}</a></li> <!--а все остальное как ссылка-->
+            {% endif %}
+        {% endfor %}
+
+        3. в файле views.py импортируем -> from .utils import *
+    - добавляем наследование класса "DataMixin" в class WomenHome(DataMixin, ListView)
+    - убираем в "def get_context_data" ненужные строки
+            def get_context_data(self, *, object_list=None, **kwargs):
+                # обращаемся к базовому классу и берем существующий контекст
+                context = super().get_context_data(**kwargs) # **kwargs - передаем все именованные параметры
+                c_def = self.get_user_context(title='Главная страница')
+                # объединяем словари в один
+                return dict(list(context.items()) + list(c_def.items()))
+    -запуускаем сервер->  python manage.py runserver
+
+        4. в файле views.py в "class AddPage" сделаем тоже самое
+                def get_context_data(self, *, object_list=None, **kwargs):
+                    context = super().get_context_data(**kwargs)
+                    c_def = self.get_user_context(title='Добавление статьи')
+                    return dict(list(context.items()) + list(c_def.items()))
+
+        5. ---------------- в "class ShowPost" сделаем тоже самое
+                def get_context_data(self, *, object_list=None, **kwargs):
+                    context = super().get_context_data(**kwargs)
+                    c_def = self.get_user_context(title=context['post'])
+                    return dict(list(context.items()) + list(c_def.items()))
+
+        6. ---------------- в "class WomenCategory" сделаем тоже самое
+                def get_context_data(self, *, object_list=None, **kwargs):
+                    context = super().get_context_data(**kwargs)
+                    c_def = self.get_user_context(title='Категория - '+str(context['posts'][0].cat),
+                                                  cat_selected=context['posts'][0].cat_id)
+                    return dict(list(context.items()) + list(c_def.items()))
+
+*********************************************************************************************************************
+
+        В Django есть много стандартных Mixin которые работают с классами представлениями
+
+Рассмотрим один пример: об авторизации https://djbook.ru/rel3.0/topics/auth/default.html
+        "LoginRequired" --->  https://djbook.ru/rel3.0/topics/auth/default.html#the-loginrequired-mixin
+        С помощью этого Mixin-а ОГРАНИЧИМ ДОСТУП к "Добавить статью" незареганым юзерам
+
+        1. в views.py импортируем->   from django.contrib.auth.mixins import LoginRequiredMixin
+        2. пропишем миксин в классе->  class AddPage(LoginRequiredMixin, DataMixin, CreateView):
+    теперь страница 404 для незарегистрированных
+        3. сделаем чтоб незарегистрированных перенаправляло на регистрацию
+    - классе->  class AddPage пропишем атрибут -> login_url = '/admin'   -указывает на адрес перенаправления
+    так писать не лучшая практика -->  login_url = '/login'
+        лучше через перенаправление -->  login_url = reverse_lazy('login')
+    - можно сделать страницу доступ запрещен --> raise_exception = True
+
+
+    ПРИМЕР как можно сделать:
+        4. Если мы используем Функции Представления, то нужно воспользоваться декоратором
+
+    - импортируем --> from django.contrib.auth.decorators import login_required
+    - в файле views.py декорируем функцию представления "def about"
+            @login_required
+            def about(request):
+                return render(request, 'women/about.html', {'title': 'О сайте'})
+    и теперь для незарегистрированных будет странца 404
+
+
+    ПРИМЕР как можно сделать:
+        5. Вообще уберем пункт меню "Добавить статью" для незарегистрированных пользователей
+
+    - в файле utils.py в классе "class DataMixin"
+            # для примера как убрать меню для незарегистрированных пользователей
+            user_menu = menu.copy()
+                if not self.request.user.is_authenticated:
+                user_menu .pop(1)
+            context['menu'] = user_menu
+
+
+        6. Если в Категории нет постов то мы не будем отображать эту Категорию
+
+    - в файле utils.py в классе "class DataMixin"
+            cats = Category.objects.annotate(Count('women'))  # формируем список категорий Агрегурующей функцией
+    - в файле base.html где отображаются категории пропишем еще одно условие "{% if c.women__count > 0 %}"
+    {% for c in cats %}
+        {% if c.women__count > 0 %}
+            {% if c.pk == cat_selected %}
+                <li class="selected">{{c.name}}</li>  <!--либо выбранную рубрику как текст-->
+            {% else %}
+                <li><a href="{{ c.get_absolute_url }}" >{{c.name}}</a></li> <!--а все остальное как ссылка-->
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+-------------------------------------------------------------------------------------------------------
+
+
+

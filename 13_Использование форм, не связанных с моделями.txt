@@ -1,0 +1,139 @@
+урок
+https://www.youtube.com/watch?v=u37FXeVQIpU&list=PLA0M1Bcd0w8xO_39zZll2u1lz_Q-Mwn1F&index=13
+
+
+на страницах html использулют формы <form>.....</form> служат для передачи на сервер пользовательской информации
+___
+формы Django- https://djbook.ru/rel3.0/ref/forms/fields.html
+___
+формы в Django можно создавать в СВЯЗКЕ с моделью либо ОТДЕЛЬНО как самостаятельную форму
+___
+    ____Начнем с создания несвязанной формы с моделью
+    Будем создавать форму в 'Добавить статью', в файле 'women/views.py'
+        def add_page(request): #
+            return render(request, 'women/add_page.html', {'title': "Добавление статьи",})
+    создадим файл шаблон add_page.html
+        {% extends 'women/base.html' %}
+        {% block content %}
+        <h1>{{title}}</h1>
+        <p>Содержимое страницы
+        {% endblock %}
+    запустим сервер>>> python manage.py runserver  /
+
+    /--ТОЖЕ сделаю и для 'Обратная связь'
+        def contact(request): #
+            return render(request, 'women/contact.html', {'title': "Обратная связь", })  # 'menu': menu,
+    создадим файл шаблон contact.html
+        {% extends 'women/base.html' %}
+        {% block content %}
+        <h1>{{title}}</h1>
+        <p>Содержимое страницы "Обратная связь"
+        {% endblock %}
+
+    ________в Django есть специальный класс 'Form' -на его базе строятся все дочение классы -
+    Для размещения этого класса создают файл coolsite/women/forms.py
+    создадим
+        class AddPostForm(forms.Form):
+        для выбора полей есть стандартные классы в встроенных полей -
+        https://djbook.ru/rel3.0/ref/forms/fields.html
+    в файле views.py в функцию 'def add_page(request)' добавим
+            form = AddPostForm()
+            return render(request, 'women/add_page.html', {'form': form, 'title': "Добавление статьи",})
+    в файле add_page.html вместо "<p>Содержимое страницы"  добавим 'form'
+            <form action="{% url 'add_page' %}" method="post">   # форма перенаправляет на страницу 'add_page' методом "post"
+                {% csrf_token %}  # служит защитой формы от csrf атак это когда копируют сайт и хотят украсть информацию которую вводит пользователь в этой форме
+                {{ form.as_p }}  # функцция формирует поле ввода, шаблонизатор сам вызовет эту функцию
+                <button type="submit">Добавить</button> # формирует кнопку для отправления введеных данных на сервер
+            </form>
+    ----пропишем когда форма передается первый раз она пустая, но в случае неверных данных она после проверки возвращается не пустая, а с введенными ранее данными
+    в файле views.py в функции "def add_page(request)" пропишем условие
+                if request.method == 'POST':          # если пользователь нажал отправить(т.е. сработал метод POST)
+                    form = AddPostForm(request.POST)  # формируется форма на основе объекта словаря POST где хранятся заполненые данные
+                    if form.is_valid():               # если данные не прошли проверку то форма вернется с заполнеными полями
+                    print(form.cleaned_data)      # если данные прошли проверку, то отобразим в консоли очищенные данные
+                else:
+                    form = AddPostForm()
+    ---для примера введем данные и print(form.cleaned_data) выведет в терминал принятые данные
+    [06/Feb/2022 20:30:02] "POST /add_page/ HTTP/1.1" 200 4445
+{'title': 'Ариана', 'slug': 'dfdsf', 'content': 'ывавыаыаыф', 'is_published': True, 'cat': <Category: Актрисы>}
+
+        ____сделаем названия полей на русском, для этого в файле "forms.py" в функции "AddPostForm"
+        title = forms.CharField(max_length=255, label="Заголовок")
+        и так далее по всем полям
+    делаем поле не обязательным--->  is_published = forms.BooleanField(label='Публикация', required=False)
+    делаем поле отмеченым--->  is_published = forms.BooleanField(label='Публикация', required=False, initial=True)
+    в поле "Категории" вместо -------(пустого значения) сделаем "Категория не выбрана"
+    cat = forms.ModelChoiceField(queryset=Category.objects.all(), label="Категории", empty_label="Категория не выбрана")
+        ---- какие параметры существуют можно посмотреть в документации
+
+----------------------------
+    ____улучшим внешний вид формы, в файле add_page.html ----
+        <!--    {{ form.as_p }}-->
+
+        <p><label class="form-label" for="{{ form.title.id_for_label }}">{{form.title.label}}:</label>{{ form.title }}</p>
+        <div class="form-error">{{ form.title.errors }}</div>
+
+        <p><label class="form-label" for="{{ form.slug.id_for_label }}">{{form.slug.label}}:</label>{{ form.slug }}</p>
+        <div class="form-error">{{ form.slug.errors }}</div>
+
+        <p><label class="form-label" for="{{ form.content.id_for_label }}">{{form.content.label}}:</label>{{ form.content }}</p>
+        <div class="form-error">{{ form.content.errors }}</div>
+
+        <p><label class="form-label" for="{{ form.is_published.id_for_label }}">{{form.is_published.label}}:</label>{{ form.is_published }}</p>
+        <div class="form-error">{{ form.is_published.errors }}</div>
+
+        <p><label class="form-label" for="{{ form.cat.id_for_label }}">{{form.cat.label}}:</label>{{ form.cat }}</p>
+        <div class="form-error">{{ form.cat.errors }}</div>
+
+------------объем кода увеличился что тоже не хорошо  -----СОКРАТИМ---
+    сделаем через цикл for
+        {% for in form %}
+            <p><label class="form-label" for="{{ f.id_for_label }}">{{f.label}}:</label>{{ f }}</p>-->
+            <div class="form-error">{{ f.errors }}</div>
+        {% endfor %}
+****
+    поля получатся однотипны, но мы можем их поменять и непосредственно в "class AddPostForm" добавив widget=forms.
+    title = forms.CharField(max_length=255, label="Заголовок", widget=forms.TimeInput(attrs={'class': 'form-input'}))
+    так можно делать тонкую настройку вида каждого поля отдельно
+***--------------------------------------------------------------------
+
+        Добавим добавление данных в БД из формы
+    в файле views.py в функции "def add_page" пропишем
+                    if form.is_valid():
+                        try:
+                            Women.objects.create(**form.cleaned_data)
+                            return redirect('home_redirect')
+                        except:
+                            form.add_error(None, "Ошибка добавления поста")
+    чтоб выводились на ошиюки не связанные с полями, в файле add_page.html добавляем форму
+                    <div class="form-error">{{ form.non_field_errors }}</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,111 @@
+урок
+https://www.youtube.com/watch?v=_0IDdU6PDJo&list=PLA0M1Bcd0w8xO_39zZll2u1lz_Q-Mwn1F&index=15
+
+спиок базовых классов - https://djbook.ru/rel1.9/ref/class-based-views/index.html
+
+представления - https://djbook.ru/rel3.0/#the-view-layer
+
+----------------------------------------------------------
+
+** ListView
+****        1. Вместо функции 'def index' напишем класс представления ListView - он создает список чего либо, и подходит под наши цели
+        - импортируем  from django.views.generic import ListView
+class WomenHome(ListView): # этот класс будет отвечать за главную страницу сайта
+    model = Women # атрибут ссылается на модель Women
+        закоментируем пока 'index', и в "urls.py" пропишем класс "WomenHome"
+    path('', WomenHome.as_view(), name='home_redirect')
+        - Запускаем сервер и получаем ошибку страницы -НЕ найден -> women/women_list.html - автоматом ищет такой путь
+        а наш шаблон "index.html" , укажем в классе "WomenHome" чтоб использовал наш шаблон
+    template_name = 'women/index.html'
+        Ошибок нет, но главная страница пустая, в index.html пропишем вместо "{% for p in posts %}"
+        {% for p in object_list %}
+        Теперь главная страница работает как раньше , но мы хотим вернуть как раньше "{% for p in posts %}" для этого
+        в классе "WomenHome" укажем еще атрибут
+    context_object_name = 'posts'
+
+****        2. Добаим заголовок главной страницы (он пропал при добавлении представления)
+        -по простому можно в классе "WomenHome" укажем еще атрибут
+    extra_context = {'title': 'Главная страница'}
+    -но с помощью "extra_context" нельзя передовать списки, а только статические объекты т.е. неизменяемые объекты
+    -создадим функцию представления статических и динамических объектов
+            def get_context_data(self, *, object_list=None, **kwargs):
+                # обращаемся к базовому классу и берем существующий контекст
+                context = super().get_context_data(**kwargs) # **kwargs - передаем все именованные параметры
+                # context['menu'] = menu # я запилил меню в шаблон "list_menu.html" давно
+                context['title'] = 'Главная страница'
+                context['cat_selected'] = 0 # делает нажатой "Все категории" на главной странице
+                return context
+
+****        3. На главной странице сделаем отображение статей только отмеченных к публикации
+    Для этого из модели "Women" должны брать для отображения только эти модели
+    в классе "WomenHome" в этой функции выбираем то что будем отображать из модели , функция формирует список
+            def get_queryset(self):
+                return Women.objects.filter(is_published=True) # возвращаем модели только отмеченные к публикации
+
+****        4. Теперь сделаем класс Представление для функции "show_category" в файле views.py
+class WomenCategory(ListView):
+    model = Women
+    template_name = 'women/index.html'
+    context_object_name = 'posts'
+        # в этой функции выбираем то что будем отображать из модели , функция формирует список
+    def get_queryset(self):
+        return Women.objects.filter(cat__slug=self.kwargs['cat_slug'],is_published=True)
+        # cat__slug - означает что мы обращаемся к полю slug таблицы cat связанной с этой записью
+----
+        - в файле urls.py
+    path('category/<slug:cat_slug>/', WomenCategory.as_view(), name='category'), #
+
+****        5. Добаим заголовок страницы (он пропал при добавлении представления), и выбор категории
+    def get_context_data(self, *, object_list=None, **kwargs):
+        # обращаемся к базовому классу и берем существующий контекст
+        context = super().get_context_data(**kwargs) # **kwargs - передаем все именованные параметры
+        # context['menu'] = menu # я запилил меню в шаблон "list_categories.html" давно
+        context['title'] = 'Категория - '+str(context['posts'][0].cat)
+        context['cat_selected'] = context['posts'][0].cat_id # делает нажатой "Все категории" на главной странице
+        return context
+
+        -генерация исключения когда не существует ни каких статей и мы не можем обратиться к ['posts'][0]
+    в class WomenCategory добавим строку
+    allow_empty = False
+
+
+** DetailView  - служит для отображения какого либо поста
+****        1. заменим функцию "def show_post" классом пердставления "class ShowPost(DetailView)"
+class ShowPost(DetailView):
+    model = Women
+    template_name = 'women/post.html'
+            - пропишем новый маршрут в файле urls.py
+    path('post/<slug:post_slug>/', ShowPost.as_view(), name='post'), #
+            -чтоб это работало <slug:post_slug> т.к. по умолчанию <slug:slug> , добавим атрибут в "class ShowPost"
+    slug_url_kwarg = 'post_slug' # pk_url_kwarg = '****' -если используем "pk"
+            -страница пустая потому-что в шаблоне post.html имя "post", укажем это имя в представлении
+    context_object_name = 'post'
+            - добавим название вкладки и список главного меню , но закоментируем код потомучто меню я добавил сразу в шаблон list_menu.html и загрузил в base.html
+            в "class ShowPost" добавим функцию
+    def get_context_data(self, *, object_list=None, **kwargs):
+        # обращаемся к базовому классу и берем существующий контекст
+        context = super().get_context_data(**kwargs) # **kwargs - передаем все именованные параметры
+        # context['menu'] = menu # я запилил меню в шаблон "list_categories.html" давно
+        context['title'] = context['post']
+        return context
+
+
+** CreateView  - класс для работы с формами , для добавления нового поста
+****        1. заменим функцию "def add_page" классом пердставления "class AddPage(CreateView)"
+class AddPage(CreateView):
+    form_class = AddPostForm # атрибут ууказывает на встроенный класс форму "AddPostForm"
+    template_name = 'women/add_page.html'
+            - пропишем новый маршрут в файле urls.py
+    path('add_page/', AddPage.as_view(), name='add_page'), #
+            - добавим название вкладки
+    def get_context_data(self, *, object_list=None, **kwargs):
+        # обращаемся к базовому классу и берем существующий контекст
+        context = super().get_context_data(**kwargs) # **kwargs - передаем все именованные параметры
+        # context['menu'] = menu # я запилил меню в шаблон "list_categories.html" давно
+        context['title'] = 'Добавление статьи'
+        #success_url = reverse_lazy('.....') #
+        return context
+
+        #success_url = reverse_lazy('home') #адрес куда добавлять новую статью если в нашей модели не прописан метод "def get_absolute_url"
+        #reverse_lazy - создает маршрут в момент когда он понадобится и маршруут будет существовать, а reverse - создает маршрут сразу НО если его еще нет будет ошибка
+

@@ -1,0 +1,55 @@
+урок
+https://www.youtube.com/watch?v=LL71poFECjE&list=PLA0M1Bcd0w8xO_39zZll2u1lz_Q-Mwn1F&index=24
+https://youtu.be/LL71poFECjE
+
+О django-simple-captcha:  https://django-simple-captcha.readthedocs.io/en/latest/advanced.html
+капча: https://pypi.org/project/django-simple-captcha/
+
+            0.1. Добавим страницу "Обратная связь"
+        - в views.py  в место функции "def contact(request):" пропишем класс представления
+                class ContactFormView
+        - в forms.py пропишем
+                class ContactForm(forms.Form):
+        - в urls.py пропишем путь
+                path('contact/', ContactFormView.as_view(), name='contact'),
+        - шаблон "contact.html" я сделал по домашнему ЗД не помню в каком уроке, но сейчас пропишем форму в нем
+        которая будет отправлять данные
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="form-error">{{ form.non_field_errors</div>
+                    {% for f in form %}
+                    <p><label class="form-label" for="{{ f.id_for_label }}">{{f.label}}:</label>{{ f }}</p>
+                    <div class="form-error">{{ f.errors }}</div>
+                    {% endfor %}
+                        <button type="submit">Отправить</button>
+                    </form>
+
+            1. Теперь добавим КАПЧУ
+
+        1.1 установим django-simple-captcha
+            pip install django-simple-captcha
+        1.2. как привязать капчу к нашему сайту найдем по ссылке https://django-simple-captcha.readthedocs.io/en/latest/usage.html#installation
+        1.3. в settings.py в INSTALLED_APPS добавляем 'captcha',
+
+        1.4. сделаем миграцию
+                python manage.py migrate
+
+        1.5. добавим глобальный путь в coolsite/urls.py
+                urlpatterns += [path('captcha/', include('captcha.urls')),]
+
+            2. Используем капчу в нашей форме : https://django-simple-captcha.readthedocs.io/en/latest/usage.html#adding-to-a-form
+        2.1. импортируем в forms.py
+            from captcha.fields import CaptchaField
+        2.2. в нашей форме "class ContactForm(forms.Form)" добавим
+            capatcha = CaptchaField()
+        2.3. запускаем сервер и видим капчу
+    ее отображение мы можем изменить стандартными методами
+        https://django-simple-captcha.readthedocs.io/en/latest/advanced.html
+    или мы можем создать свою капчу
+        https://django-simple-captcha.readthedocs.io/en/latest/advanced.html#rendering
+
+
+
+
+
+

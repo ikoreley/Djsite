@@ -1,0 +1,100 @@
+уроки
+https://youtu.be/6jyl85q6yRs
+
+По настройке админки: https://docs.djangoproject.com/en/3.1/ref/contrib/admin/
+
+
+                    Сделаем админку в тонах сайта
+                1. заходим в http://127.0.0.1:8000/admin/
+            -С помощью debug_toolbar посмотрим какие шаблоны используются для формирования страницы
+        есть такой шаблон "admin/base_site.html" он находится
+D:\DjangoSelfedu\Djsite\env\Lib\site-packages\django\contrib\admin\templates\admin\base_site.html
+        - отыкрывааем его и видим простой код, и лучше не трогать и не изменять созданные
+        Django файлы, переопределение делаем непосредственно в нашем проекте
+        для этого далее
+                2. Создадим папку "templetes" в корне проекта D:\DjangoSelfedu\Djsite\coolsite\templetes
+                3. создадим подкаталог "admin"
+        и если сдесь разместим файл с таким же именем "base_site.html" , то он будет переопределять стандартный Джфнговский файл из папки 'env',
+        Потому-что Джанго ищет сначало файлы во вспомогательных каталогах ИМЕННО КОРНЯ ПРОЕКТА, а потом в папках проекта, НО мы должны явно прописать путь к этому файлу
+                4. Прописшем путь к файлу
+        - в settings.py в "TEMPLATES" в "'DIRS': [],"
+            'DIRS': [os.path.join(BASE_DIR, 'templates')],
+
+                5. в уже Нашем файле base_site.html
+
+        - из файле D:\DjangoSelfedu\Djsite\env\Lib\site-packages\django\contrib\admin\templates\admin\base.html
+        скопируем блок "{% block extrahead %}{% endblock %}" и вставим его в наш файл
+        и пропишем там нашу таблицу стилей
+        {% load static %}   # загружаем каталог "static"
+        {% block extrahead %}
+            <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+        {% endblock %}
+        - Теперь создадим каталог и файл 'static/css/admin.css'
+        перегружаем сервер и смотрим код страницы админ и в 'head' видим ссылку на наш файл
+        также мы в коде страницы можем увидеть что за что отвечает и поменять
+    -Для примера, пропишем в нашем файле "admin.css"
+        #header {
+        background: #5e3a00;
+        }
+        Поменяли фон заголовка
+    - одбавим еще изменения цвета заголовков, также через код страницы найдем и запишем в css
+        .module caption {
+        background: #5e3a00;
+        }
+        Поменяли фон заголовков "ЖЕНЩИНЫ МИРА" и "ПОЛЬЗОВАТЕЛИ И ГРУППЫ"
+    -объединим код потомучто цвет одинаковый
+                #header, .module caption {
+                    background: #5e3a00;
+                }
+
+            6. Меняем названия заголовков
+        Лучше менять на уровне программы
+        - в файле admin.py дополнительно пропишем
+admin.site.site_title = 'Админ-панель сайта о женщинах'
+admin.site.site_header = 'Админ-панель сайта о женщинах 2'
+
+            7. МИНИАТЮРЫ ФОТО в редактировании
+        В форме "Выберите Известные женщины для изменения" прописан путь и названия фото,
+        * сделаем миниатюры
+        в admin.py в "class WomenAdmin" пропишем функцию
+    def get_html_photo(self, object):
+        if object.photo:
+        return mark_safe(f"<img src='{object.photo.url}' width=50>")
+
+        - а в списке list_display = ('id', 'title', 'time_create', 'photo', 'is_published')
+        'photo' меняем на 'get_html_photo'
+
+        - поменяем заголовок столбца фото "GET HTML PHOTO" на Миниатюра
+        пропишем ниже функции
+    get_html_photo.short_description = "Миниатюра"
+
+                7. Сделаем вывод фото и при редактировании
+        - в admin.py в "class WomenAdmin" пропишем атрибут
+    fields = ('title', 'slug', 'cat', 'content', 'photo', 'is_published')
+        - добавим нередактируемые поля
+    readonly_fields = ('time_create', 'time_update')
+        - и только после этого добавим их в  "fields"
+    fields = ('title', 'slug', 'cat', 'content', 'photo', 'is_published'б'time_create', 'time_update')
+
+            - И теперь добавляем миниатюру
+        - в "readonly_fields" добавим 'get_html_photo'
+        - и в "fields" добавим 'get_html_photo'
+
+            8. Добавим панель сохранения и вверх страницы
+        - в документации найдем метод https://docs.djangoproject.com/en/3.1/ref/contrib/admin/#django.contrib.admin.ModelAdmin.save_on_top
+        - в admin.py в "class WomenAdmin" пропишем атрибут
+        save_on_top = True
+И видим вверху панель сохранения
+
+
+
+
+
+
+
+
+
+
+
+
+

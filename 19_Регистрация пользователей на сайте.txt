@@ -1,0 +1,77 @@
+урок
+https://www.youtube.com/watch?v=QK4qbVyY7oU&list=PLA0M1Bcd0w8xO_39zZll2u1lz_Q-Mwn1F&index=19
+
+        1. Доюавим ссылку, регистрация
+        в шаблоне base.html  в "Блок меню"
+    -удалим этот код <li class="last"><a href="{% url m.url_name %}">{{m.title}}</a></li>
+    - удалим это условие {% if not forloop.last %} , уже не нужны будем просто отображать меню
+    -после цикла меню пропишем
+        <li class="last"><a href="{% url 'register' %}">Регистрация </a>|<a href="{% url 'login' %}"> Войти</a></li>
+    -в utils.py в словаре меню уберем строчку # {'title': 'Войти','url_name': 'login'},
+    -в urls.py пропишем маршут для 'register'
+        path('register/', login, name='register'), login - поменяем на класс RegisterUser.as_view()
+            path('register/', RegisterUser.as_view(), name='register'),
+    -в views.py создадим "class RegisterUser"
+            class RegisterUser(DataMixin, CreateView):
+                form_class = UserCreationForm  # берем стандартную форму регистрации Django
+                template_name = 'women/register.html' # ссылка на шаблон страницы
+                success_url = reverse_lazy('login')   # перенаправление на страницу при успешной регистрации
+                def get_context_data(self, *, object_list=None, **kwargs):
+                    context = super().get_context_data(**kwargs) # **kwargs - передаем все именованные параметры
+                    c_def = self.get_user_context(title='Регистрация')
+                    return dict(list(context.items()) + list(c_def.items()))
+    -пропишем шаблон register.html
+    Все работает
+
+        2. Улучшим форму регистрации
+    -создадим свою форму в forms.py
+            class RegisterUserForm(UserCreationForm):
+                class Meta:    # расширяем класс UserCreationForm
+                    model = User  # User с нашей базы данных "auth_user"
+                    fields = ('username', 'password1', 'password2') # указываем поля которые мы будем отображать
+                    # оформление для каждого поля, имена берем из кода элементов страницы с помощью браузера
+                    widgets = {
+                        'username': forms.TextInput(attrs={'class':'form-input'}),
+                        'password1': forms.PasswordInput(attrs={'class': 'form-input'}),
+                        'password2': forms.PasswordInput(attrs={'class': 'form-input'}),
+    -в views.py прописываем свою созданную форму в "class RegisterUser"
+                form_class = RegisterUserForm  # берем свою созданную форму
+    В принципе ничего не поменялось от стандартной только поле 'username' стало чуть больше и шрифт жирнее в нем
+    Почемуто стили для остальных полей не работают , поэтому сделаем по другому
+
+        3. сделаем стили для полей 'password1' и  'password2'
+
+    - в forms.py в "class RegisterUserForm" продублируем виджеты для полей, назначим через соответсавующие классы
+    class RegisterUserForm(UserCreationForm):
+        username = forms.CharField(label='Логин', widget=forms.TextInput(attrs={'class':'form-input'}))
+        password1 = forms.CharField(label='Пароль', widget=forms.PasswordInput(attrs={'class': 'form-input'}))
+        password2 = forms.CharField(label='Повтор пароля', widget=forms.PasswordInput(attrs={'class': 'form-input'}))
+
+    Теперь у формы  более приличный вид
+
+        4. Еще улучшим страницу регистрации
+    -в register.html вместо стандартного вывода формы "{{ form.as_p }}" пропишем цикл перебора полей и каждое поле будет подстариваться перестраиваться
+                {% for f in form %}
+                    <p><label class="form-label" for="{{ f.id_for_label }}">{{f.label}}:</label>{{ f }}</p>
+                    <div class="form-error">{{ f.errors }}</div>
+                {% endfor %}
+
+    Поля стали ровные
+
+        5. Добавим поле e-mail
+    - в forms.py в "class RegisterUserForm" добавим поле
+            email = forms.EmailField(label='Email', widget=forms.EmailInput(attrs={'class':'form-input'}))
+    - в "class Meta" в словарь "fields" добавим 'email'
+        убмраем славарь "widgets" , он уже не нужен
+
+
+
+
+
+
+
+
+
+
+
+

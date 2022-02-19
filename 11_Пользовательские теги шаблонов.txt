@@ -1,0 +1,114 @@
+урок
+https://www.youtube.com/watch?v=Sr-1OBLge6s&list=PLA0M1Bcd0w8xO_39zZll2u1lz_Q-Mwn1F&index=11
+
+ДВА ТИПА ТЕГОВ     /  более подробно про теги https://djbook.ru/rel3.0/howto/custom-template-tags.html
+* simple tags - простые теги;
+* inclusion tags - включающие теги.
+
+
+______Уберем дублирование на примере использования пользовательских тегов
+        в файле views.py однотипный код в 'def show_category' и  'def index'
+
+    В папке 'women' создадим папку-пакет 'templatetags',
+    там создадим файл 'women_tags.py' в нем будем прописывать логику работы наших тегов
+  --импортируем
+  from django import template
+  from women.models import *
+  -- создаем экзетпляр класса--> register = template.Library() , через него происходит регистрация собственных шаблонных тегов
+  - создадим фуункцию    # возвращает все записи категории
+        def get_categories():
+            return Category.objects.all()
+  - теперь свяжем эту функцию с тегом т.е. превратить функцию в тег
+    декоратором @register.simple_tag()
+    теперь нашу функцию можем использовать как тег в шаблонах приложения
+    -- в файле base.html в начале файла загрузим тег {% load women_tags %}
+    в зоне <!-- Sidebar слева --> вызовем этот тег {% get_categories %}
+    запустим серевер>>> python manage.py runserver   ,
+    мы увидим в углу  <QuerySet [<Category: Актрисы>, <Category: Певицы>]>
+
+    -- чтоб перебрать категории в цикле нужно сохранить данные тега в переменную {% get_categories as categories %}
+    список пропал со страницы потомучто мы переместили тег в переменную
+    поменяем переменные в цикле {% for c in cats %} на {% for c in categories %}
+    -теперь можем в views.py из 'def show_category' и  'def index' убрать строки  'cats = Category.objects.all()' и ''cats': cats,'
+
+    -- чтоб теге обращаться к другому имени {% <другое имя> as categories %}
+    в декораторе промишем параметр  @register.simple_tag(name='<другое имя>')
+    для примера сделаем @register.simple_tag(name='getcats')
+  ---------------
+
+        ТЕПЕРЬ ВТОРОЙ ТЕГ * inclusion tags - включающие теги.
+    позволяет формировать свой собственный шаблон на основе некоторых данных и возвращать фрагмент HTML страницы
+
+    --в файле women_tags.py пропишем включающий тег
+        @register.inclusion_tag('women/list_categories.html')
+        def show_categories():
+            cats = Category.objects.all()  # считывает все категории
+            return {"cats": cats}          # возвращает словарь считанных данных будет автоматом пердоваться в шаблон list_categories.html
+        напишем там цикл
+        {% for c in cats %}
+            {% if c.pk == cat_selected %}
+                <li class="selected">{{c.name}}</li>  <!--либо выбранную рубрику как текст-->
+            {% else %}
+                <li><a href="{{ c.get_absolute_url }}" >{{c.name}}</a></li> <!--а все остальное как ссылка-->
+            {% endif %}
+        {% endfor %}
+    в base.html уберем этот фрагмент, и пропишем там {% show_categories %}
+
+    -- простому тегу передадим параметры, к примеру передадим фильтр
+        def get_categories(filter=None):
+            if not filter:
+                return Category.objects.all()
+            else:
+                return Category.objects.filter(pk=filter)
+    в base.html в зоне <!-- Sidebar слева --> пропишем {% getcats filter=1 %} (выведет <QuerySet [<Category: Актрисы>]>), {% getcats filter=2 %} (выведет <QuerySet [<Category: Певицы>]>)
+    МОЖНО и просто указать {% getcats 1 %} или {% getcats 2 %}
+
+        -- передадим параметр ВТОРОМУ-ВКЛЮЧАЮЩЕМУ ТЕГУ
+    в файле women_tags.py
+        def show_categories(sort=None, cat_selected=0):
+            # cat_selected=0 - выделяет выбранную рубрику , sort=None - сортировка
+            if not sort:
+                cats = Category.objects.all()
+            else:
+                cats = Category.objects.order_by(sort)
+            return {"cats": cats, "cat_selected": cat_selected}
+    -далее в base.html уберем '{% getcats 2 %}',
+    в зоне <!-- Sidebar слева -->   {% show_categories '-name' cat_selected %}  / парметр '-name' это сортировка по имени
+    можно так-> {% show_categories 'name' cat_selected %}  / парметр 'name' это сортировка по имени
+    если не нужна сортировка то можно так прописать {% show_categories cat_selected=cat_selected %}
+
+        сделаем ВКЛЮЧАЮЩИЙ ТЕГ МЕНЮ (MENU)
+    из файла base.html вырезаем цикл отображения меню, на его место прописываем  {% show_menu %}
+            {% for m in menu %}
+                {% if not forloop.last %}
+                        <li><a href="{% url m.url_name %}">{{m.title}}</a></li>
+                {% else %}
+                        <li class="last"><a href="{% url m.url_name %}">{{m.title}}</a></li>
+                {% endif %}
+            {% endfor %}
+    и вставляем в шаблон list_menu.html
+    в файле women_tags.py пишем включающий тег 'show_menu'
+            @register.inclusion_tag('women/list_menu.html')
+            def show_menu():
+                menu = [{'title': 'О сайте', 'url_name': 'about'},
+                        {'title': 'Добавить статью', 'url_name': 'add_page'},
+                        {'title': 'Обратная связь', 'url_name': 'contact'},
+                        {'title': 'Войти', 'url_name': 'login'},
+                        ]
+                return {"menu": menu}
+    в файле views.py убираем словаврь 'menu', в функциях 'def index', 'def about' и 'def show_category' убираем  'menu': menu
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

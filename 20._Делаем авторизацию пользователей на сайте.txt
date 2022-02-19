@@ -1,0 +1,76 @@
+урок
+https://www.youtube.com/watch?v=0jNnU8h2Oz8&list=PLA0M1Bcd0w8xO_39zZll2u1lz_Q-Mwn1F&index=20
+
+Об авторизации: https://djbook.ru/rel3.0/topics/auth/default.html
+
+        1. В файле views.py создадим класс Представления который отвечает за отображение формы авторизации
+        class LoginUser(DataMixin, LoginView):  # стандартный класс представления
+            form_class = AuthenticationForm  # стандартная форма авторизации
+            template_name = 'women/login.html'
+
+            def get_context_data(self, *, object_list=None, **kwargs):
+                context = super().get_context_data(**kwargs)
+                c_def = self.get_user_context(title="Авторизация")
+                return  dict(list(context.items()) + list(c_def.items()))
+
+        2. Создадим шаблон login.html
+                {% extends 'women/base.html' %}
+                {% block content %}
+                <h1>{{title}}</h1>
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                    <button type="submit">Войти</button>
+                </form>
+                {% endblock %}
+
+        3. в urls.py пропишем  path('login/', LoginUser.as_view(), name='login'), #
+
+        4. В файле views.py закоментируем
+            # def login(request): #
+            #     return HttpResponse("Авторизация")
+
+        При авторизации преходим на стандартный адрес http://127.0.0.1:8000/accounts/profile/
+        но выводит страницу 404, сделаем перенаправление
+
+        в "class LoginUser" пропишем функцию
+                    def get_success_url(self):
+                        return reverse_lazy('home_redirect')
+
+        Также все это можем сделать в settings.py, пропишем константу
+        # LOGIN_REDIRECT_URL = '/' # в файле views.py в "class LoginUser" функция "def get_success_url" делает тоже перенаправление на страницу при авторизации
+
+        5. Сделаем свою форму авторизации
+    - в forms.py создадим СВОЙ класс пердставления формы авторизации
+            class LoginUserForm(AuthenticationForm):
+                username = forms.CharField(label='Логин', widget=forms.TextInput(attrs={'class': 'form-input'}))
+                password = forms.CharField(label='Пароль', widget=forms.PasswordInput(attrs={'class': 'form-input'}))
+
+    -в views.py в "class LoginUser" пропишем  form_class = LoginUserForm  # НАША созданная форма авторизации
+
+    -в login.html заменим вывод формы "{{ form.as_p }}" на цикл
+            <div class="form-error">{{ form.non_field_errors }}</div> # пропишем для отображения общих ошибок авторизации
+
+                {% for f in form %}
+                    <p><label class="form-label" for="{{ f.id_for_label }}">{{f.label}}:</label>{{ f }}</p>
+                    <div class="form-error">{{ f.errors }}</div>
+                {% endfor %}
+
+        6. Для зарегестрированных уберем отображение "Регистрация|Войти"
+    6.1 - в base.html в <!-- Блок меню --> где регистрация и войти пропишем условие
+            {% if request.user.is_authenticated %}
+				<li class="last"> {{user.username}} | <a href="{% url 'logout' %}">Выйти</a></li>
+			{% else %}
+				<li class="last"><a href="{% url 'register' %}">Регистрация </a>|<a href="{% url 'login' %}"> Войти</a></li>
+			{% endif %}
+    6.2 в urls.py пропишем путь
+            path('logout/', logout_user, name='logout'),
+    6.3 в views.py пропишем функцию представления
+            def logout_user(request):
+                logout(request)
+                return redirect('login')
+        7. При регистрации будем автоматически авторизовывать
+    7.1 - в файле views.py в "class RegisterUser" пропишем метод
+
+
+

@@ -1,0 +1,66 @@
+
+ORM(Object-Relational Mapping) - объектно-реляционные отображение
+при помощи этой технологии WSGI приложение может работать с разными базами данных
+по умолчанию Django ORM работает с SQLite
+# Database
+# https://docs.djangoproject.com/en/3.2/ref/settings/#databases
+настройки базы данных находятся в coolsite/settings.py в словаре DATABASES{}
+
+---
+Для демонстрации таблиц
+скачиваем https://sqlitestudio.pl/ открываем базу проекта coolsite/db.sqlite3
+создаем первый классс который будет описывать таблицу "women" в women/models.py
+class Women(models.Model)
+документация->  https://djbook.ru/rel3.0/topics/db/models.html#module-django.db.models
+типы полей-> https://djbook.ru/rel3.0/topics/db/models.html#field-types
+             https://djbook.ru/rel3.0/ref/models/fields.html#model-field-types
+--
+Чтоб модель "Women" заработала
+для поля photo нужно сделать настройку констант  MEDIA_ROOT , MEDIA_URL чтоб django автоматически загружал фото
+в пакете coolsite/settings.py в конце добавим описание констант
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media') # BASE_DIR определяет текущую папку нашего проекта к этой папке будет добавлятся подпапка 'media' где будут хранится наши фото
+MEDIA_URL = '/media/' # к url графическим файлам будет добавлять префикс '/media/'
+=>
+далее откроем coolsite/urls.py и пропишем внизу строку
+if settings.DEBUG: urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+т.е. в режиме ОТЛАДКИ к основным маршрутам добавляем еще маршруты для статических данных загруженных файлов сначало URL , а потом папку где находятся эти файлы
+в coolsite/settings.py устанавливаем константу DEBUG = True
+
+МИГРАЦИЯ________
+каждый файл миграции помещается в women/migrations/ на основе наших миграций создается структура таблиц нашей базы данных
+каждый последующий файл содержит лишь изменения нашей бызы данных (по типу контроля версий) и благодаря этому мы можем откатиться
+!!! На практике лучше избегать изменять структуру таблиц!!!
+
+Создадим файл миграции
+в терминале пишем python manage.py makemigrations
+просит установить python -m pip install Pillow / устанавливаем
+снова пишем в терминале python manage.py makemigrations / и появился файл миграции
+Migrations for 'women':
+  women\migrations\0001_initial.py
+    - Create model Women
+=>
+далее команда которая позволит увидеть какой SQL запрос будет выполнен для нашей таблицы
+python manage.py sqlmigrate women 0001
+и выведет этот запрос ----
+CREATE TABLE "women_women" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "title" varchar(255) NOT NULL, "content" text NOT NULL, "photo" varchar(100) NOT NU
+LL, "time_create" datetime NOT NULL, "time_update" datetime NOT NULL, "is_published" bool NOT NULL);
+COMMIT;
+=>
+Теперь выполним миграцию и создадим нашу таблицу в базе данных
+в терминале пропишем  python manage.py migrate
+и создаются помимо нашей таблицы еще вспомогательные таблицы django
+в нашей базе данных в программе SQLiteStudio появились 11 таблиц и одна из них наша "women_women"
+
+
+
+
+
+
+
+
+
+
+
+
+
+

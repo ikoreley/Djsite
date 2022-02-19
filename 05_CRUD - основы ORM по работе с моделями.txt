@@ -1,0 +1,158 @@
+
+ОСНОВЫ РАБОТЫ С МОДЕЛЯМИ
+
+CRUD
+- Create - создание,
+- Read - чтение,
+- Update - изменение,
+- Delete - удаление.
+
+// одна строка в таблице является экземпляром класса Women
+
+будем работать в терминале---
+будем заполнять данные нашей таблица class Women - урок 4
+терминале  PS D:\DjangoSelfedu\Djsite\coolsite>
+пишем  python manage.py shell
+    импортируем модель:
+from women.models import Women
+    создадим новую запись в таблице bd:
+w1 = Women(title='Анджелина Джоли', content='Биография Анджелины Джоли')
+    смотрим нашу базу в программе SQLite
+чтоб записать данные пишем в терминале
+w1 = _      # можно пропустить НЕ РАБОТАЕТ пишет ошибку# переменная '_' сохраняет в себе последние действия
+w1          # должно показать <Women: Women object (None)> / None - это id , none потомучто запись ещё не создана
+w1.save()   # данные появились в таблице DB можем запустить и посмотреть в программе SQLite или другой
+w1          #<Women: Women object (1)> / теперь id => 1
+
+    # так можем работать со всеми полями таблицы
+w1.title
+w1.id
+w1.time_create
+w1.pk # совпадает с id тоже самое, ТАК ОПРЕДИЛИЛИ в Django работать с номером записи таблицы
+      # этот параметр всегда доступен и всегда означает номер записи в таблице(id)
+
+    -Посмотрим запись SQL запроса который был выполнен для добавления этой записи в таблицу
+импортируем модуль:
+from django.db import connection
+connection.queries # чтоб был не пустой список => в coolsite\settings.py прописать DEBUG = True
+        "[{'sql': 'INSERT INTO "women_women" ("title", "content", "photo", "time_create", "time_update", "is_published") SELECT \'Анджелина Джоли\', \'Биография Анд
+желины Джоли\', \'\', \'2022-02-02 13:24:04.676681\', \'2022-02-02 13:24:04.676681\', 1 RETURNING "women_women"."id"', 'time': '0.000'}]"
+
+    добавим еще запись
+w2 =  Women(title='Энн Хэтэуэй', content='Биография Энн Хэтэуэй')
+w2.save()      # данные появились в таблице DB можем запустить и посмотреть в программе SQLite или другой
+    добавим запись по частям
+w3 = Women()
+w3.title = 'Джулия Робертс'
+w3.content = 'Биография Джулии Робертс'
+w3.save()
+
+    есть специальный класс "Менеджер Записей" который есть во всех моделях
+Women.objects       # <django.db.models.manager.Manager object at 0x000001BEE52DC580>
+    ## можно создавать записи и она сразу добавится в базу данных
+w4 = Women.objects.create(title='Ума Турман', content='Биография Умы Турман')
+# обновляем базу и видим нашу запись
+    # можно создавать без присвоения экземпляру (переменной)
+Women.objects.create(title='Кира Найтли', content='Биография Киры Найтли')
+# <Women: Women object (5)>  - сразу выдал сообщение о записи
+
+
+Women.objects.all()     # чтение всех записей
+# выводит => <QuerySet [<Women: Women object (1)>, <Women: Women object (2)>, <Women: Women object (3)>, <Women: Women object (4)>, <Women: Women object (5)>]>
+    ЕСЛИ мы хотим вместо "Women object (.)"  видеть заголовки таблиц, для этого прописываем в models.py функцию
+def __str__(self):
+    return self.title
+=>
+# перезапускаем оболочку django, пишем в терминале exit()
+python manage.py shell
+from women.models import Women
+Women.objects.all()  # теперь выводит=> <QuerySet [<Women: Анджелина Джоли>, <Women: Энн Хэтэуэй>, <Women: Джулия Робертс>, <Women: Ума Турман>, <Women: Кира Найтли>]>
+=>
+    выделяем из списка QuerySet отдельные записи
+w=_  # присвоим переменной w этот список <QuerySet[.....................]>
+w[2] # обращаемся к элементам списка по индексу
+w[1].title # 'Энн Хэтэуэй'
+w[2].time_create # datetime.datetime(2021, 7, 9, 22, 1, 1, 100833, tzinfo=<UTC>)
+len(w) # длина списка / Общее кол-во записей
+=> и список это итерируемый объект и можем проходить циклом for
+for i in w:
+    print(i.title)
+    print(i.content)
+=>
+Если список состоит из миллиона записей, то Women.objects.all() займет много времени, ресурсов процессора и памяти // к заметке .objects.all() выводит на печать max 21запись
+поэтому лучше использовать метод .filter
+Women.objects.filter(title='Кира Найтли') # <QuerySet [<Women: Кира Найтли>]>
+                => этот фильтр на уровне SQL запросов выглядит так=>
+=> посмотрим SQL запрос
+from django.db import connection # импортируем модуль
+connection.queries  # обращаемся к коллекции последнего запроса
+     => и получаем => [{'sql': 'SELECT "women_women"."id", "women_women"."title", "women_women"."content", "women_women"."photo", "women_women"."time_create", "women_women"."time_upd
+ate", "women_women"."is_published" FROM "women_women" LIMIT 21', 'time': '0.000'}, {'sql': 'SELECT "women_women"."id", "women_women"."title", "women_women"."con
+tent", "women_women"."photo", "women_women"."time_create", "women_women"."time_update", "women_women"."is_published" FROM "women_women" WHERE "women_women"."tit
+le" = \'Кира Найтли\' LIMIT 21', 'time': '0.000'}]
+      => фильтр SQL запроса для Women.objects.filter(title='Кира Найтли') выглядит так=> WHERE "women_women"."title" = \'Кира Найтли\' LIMIT 21',
+=>
+    если обратимся к несуществующей записи=>
+Women.objects.filter(title='АБРА ХА') # выдаст пустой список <QuerySet []>
+=>
+    можно обращаться=>
+Women.objects.filter(pk=2)  # <QuerySet [<Women: Энн Хэтэуэй>]> # pk - это именованный параметр по принцыпу id рассматривали раньше
+
+    Чтоб обращаться сравнением в фильтре Women.objects.filter
+- <имя атрибута>__gte - сравнение больше или равно ( >= )
+- <имя атрибута>__lte - сравнение меньше или равно ( <= )
+=>
+Women.objects.filter(pk__gte=2)  #  <QuerySet [<Women: Энн Хэтэуэй>, <Women: Джулия Робертс>, <Women: Ума Турман>, <Women: Кира Найтли>]>
+Women.objects.filter(pk__lte=2)  # <QuerySet [<Women: Анджелина Джоли>, <Women: Энн Хэтэуэй>]>
+
+    Women.objects.exclude(...)  => выводит всё кроме прописанного описанного критерия фильтра
+Women.objects.exclude(pk=2)  #  <QuerySet [<Women: Анджелина Джоли>, <Women: Джулия Робертс>, <Women: Ума Турман>, <Women: Кира Найтли>]>
+                # видим что исключилась запись <Women: Энн Хэтэуэй>
+
+   ВЫБОР КОНКРЕТНОЙ ЗАПИСИ строго определенной
+   можно  и так Women.objects.filter(pk=2), НО !!!
+!!! согласно конвенции Django на уровне ORM принято использовать метод .get
+Women.objects.get(pk=2)    # <Women: Энн Хэтэуэй>
+   пример: если в условии .get(pk__gte=2) будет больше 1 записи или .get(pk=20) не будет записи
+   возникнет исключение
+Women.objects.get(pk=20)      #  raise self.model.DoesNotExist( women.models.Women.DoesNotExist: Women matching query does not exist.
+Women.objects.get(pk__lte=2)  #  raise self.model.MultipleObjectsReturned( women.models.Women.MultipleObjectsReturned: get() returned more than one Women -- it returned 2!
+    => А .filter в данных случаях выведет
+Women.objects.filter(pk=20)       # пустой список <QuerySet []>
+Women.objects.filter(pk__lte=2)   # выведет все по условию  <QuerySet [<Women: Анджелина Джоли>, <Women: Энн Хэтэуэй>]>
+=>
+        Метод .get ДЛЯ ПОЛУЧЕНИЯ КОНКРЕТНО ОДНОЙ ЗАПИСИ!!!
+        Метод .get часто используют при авторизации пользователей
+=>
+       Порядок сортировки  .order_by('поле по которому сортировать')
+Women.objects.filter(pk__lte=4).order_by('title')  #  <QuerySet [<Women: Анджелина Джоли>, <Women: Джулия Робертс>, <Women: Ума Турман>, <Women: Энн Хэтэуэй>]>
+=>
+Women.objects.order_by('title') # отсортируются все записи по 'title' <QuerySet [<Women: Анджелина Джоли>, <Women: Джулия Робертс>, <Women: Кира Найтли>, <Women: Ума Турман>, <Women: Энн Хэтэуэй>]>
+                     ('-title') с минусом сортирует в обратном порядке
+Women.objects.order_by('-time_update') # сортирует в обратном порядке по полю 'time_update'
+       # <QuerySet [<Women: Кира Найтли>, <Women: Ума Турман>, <Women: Джулия Робертс>, <Women: Энн Хэтэуэй>, <Women: Анджелина Джоли>]>
+
+
+________________ МЕНЯЕМ СУЩЕСТВУЮЩИЕ ЗАПИСИ В ТАБЛИЦЕ
+
+wu = Women.objects.get(pk=3)  # присвоим переменной "wu" запись 3 (<Women: Джулия Робертс>)
+wu.title = 'Марго Робби'
+wu.content = 'Биография Марго Робии'
+wu.save()
+connection.queries # был сделан такой запрос {'sql': 'UPDATE "women_women" SET "title" = \'Марго Робби\', "content" = \'Биография Марго Робии\', "photo" = \'\', "time_create" = \'2021-07-09 22:01:01.100833\', "time_update" = \'2021-07-10 10:18:28.102000\', "is_published" = 1 WHERE "women_women"."id" = 3', 'time': '0.015'}
+Women.objects.get(pk=3) # теперь <Women: Марго Робби> # обновим базу и там поменялась запись
+
+
+________________ УДАЛЯЕМ СУЩЕСТВУЮЩИЕ ЗАПИСИ В ТАБЛИЦЕ
+
+-> можно удалять сразу несколько записей
+wd = Women.objects.filter(pk__gte=4)  # присвоим переменной "wd" записи от 4
+wd  # <QuerySet [<Women: Ума Турман>, <Women: Кира Найтли>]>
+wd.delete()  # (2, {'women.Women': 2}) # удалили 2-е записи
+
+     ПОЧИТАТЬ более детальную инфу ВСЕ МЕТОДЫ В ruДОКУМЕНТАЦИИ
+https://djbook.ru/rel3.0/topics/db/queries.html
+
+
+
+

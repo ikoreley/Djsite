@@ -1,0 +1,68 @@
+урок
+https://www.youtube.com/watch?v=Zx6uNIKvVXY&list=PLA0M1Bcd0w8xO_39zZll2u1lz_Q-Mwn1F&index=12
+
+
+        Модифицируем функцию 'show_post' в файле views.py
+пропишем--> post = get_object_or_404(Women, pk=post_id) # берет в БД из 'Women' по id, а если не находит значит стр.404
+            context ={
+            'post': post,
+            'menu': menu,
+            'title': post.title,
+            'cat_selected': post.cat_id,
+            }
+            return render(request, 'women/post.html', context=context)
+    __создаем шаблон post.html , маршрут был прописан ранее
+    __сделаем отображение статей по 'slug',
+    в файле models.py в классе 'Women' и 'Category' пропишем
+            slug = models.SlugField(max_length=255, unique=True, db_index=True, verbose_name="URL")
+    раз добавили поле модель его нужно записать в базу данных, но нельзя добавить пустые поля, поэтому соберем по новой
+        -удалим все миграции (переместил их в папку "удаленные миграции")
+        -удалим null=True, из строки ниже в классе 'Women'
+        cat = models.ForeignKey('Category', on_delete=models.PROTECT,  < null=True ,>   verbose_name="Категория")
+        -теперь еще раз создадим миграцию >>> python manage.py makemigrations
+            появился новый файл women/migrations/0001_initial.py
+        -применяем миграцию >>> python manage.py migrate
+            НЕ ПОЛУЧИЛОСь потомучто база данных есть и неудается ее перестроить, УДАЛЯЕМ файл db.sqlite3 (я его перенесу в папку "удаленные миграции")
+            и запуустим снова >>> python manage.py migrate
+            создался новый файл БД  db.sqlite3, и теперь заного нужно создать суперпользователя для входа в админ-панель
+        -введем команду >>> python manage.py createsuperuser ( ik - ikoreley@list.ru - kioku )
+        -запускаем >>> python manage.py runserver
+        -заходим в админ и при создании категории есть поле 'URL' это slug , сделаем чтоб он вводился автоматически
+    в файле admin.py в class CategoryAdmin добавим строку->  prepopulated_fields = {"slug": ("name",)}  # заполняет slug на основе name
+    заходим в админ и при вводе имени категории автоматом заполняется поле "URL", и можжем дописать к нему если вдруг оно не уникально
+        -ТЕПЕРЬ тоже самое проделываем с class WomenAdmin -> prepopulated_fields = {"slug": ("title",)}  # заполняет slug на основе title
+        -сделаем отображение статей по слагу, в файле women/urls.py  вместо <int:post_id> пропишем <slug:post_id>
+        path('post/<slug:post_id>/', show_post, name='post'), #
+        в файле women/views.py
+            def show_post(request, post_slug): #
+                post = get_object_or_404(Women, slug=post_slug)
+        в файле women/models.py
+                def get_absolute_url(self):
+                    return reverse('post', kwargs={'post_slug': self.slug})
+    >>>ТЕПЕРЬ в БД появилось поле слаг и оно заполнилось
+    -------------------------------------------------------------------------------
+
+----ДЕЛАЕМ ОТОБРАЖЕНИЕ категорий по слагу
+        В show_category надо
+    cat = Category.objects.filter(slug = cat_slug)
+    posts = Women.objects.filter(cat_id = cat[0].id)
+ и ниже - 'cat_selected': cat[0].id,
+Остальное так же как в уроке.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

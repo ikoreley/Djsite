@@ -1,0 +1,127 @@
+
+
+MTV ( Models, Templates, Views )
+
+Templates
+https://djbook.ru/rel3.0/topics/templates.html
+
+coolsite/women/views.py импортирован модуль 'render' это встроенный шаблонизатор Django
+в def index(request) заменим return HttpResponse("Страница приложения women.")
+на шаблон - return render(request, '')
+шаблоны будем располагать в: в папке 'women' создадим папку 'templates' и здесь создадим папку с именем проекта 'women' ,
+ чтоб потом при сборке сайта и загрузки на боевой сервер не произошло конфликта имен потомучто создастся еще одна папка templates', но это потом разберем
+=> далее в подкаталоге 'women' создаем файл index.html и прописываем <title>Главная страница</title>
+=> теперь вставим путь return render(request, 'women/index.html') => women/index.html такой короткий путь потомучто в файле coolsite/settings.py уже хранится инфа где будут шаблоны
+и django сам найдет путь D:\Python_Course\Django_Salfedu\dgsite\coolsite\women\templates\ => а этот мы пропишем => women\index.html
+
+запускаем сервер
+manage.py runserver
+
+НАШ САЙТ ЗАПУСТИЛСЯ
+
+создадим еще один файл about women/templates/women/about.html =>пропишем в нем title О сайте и <h1>О сайте</h1>
+в файле coolsite/women/views.py пропишем функцию обработчик файла about.html
+далее прописываем маршрут в файле coolsite/women/urls.py для функции обработчика файла about.html path('about/', about, name='about')
+и по адресу http://127.0.0.1:8000/about/ все работает
+
+сделаем шаблон главной страницы
+в файле coolsite/women/templates/women/index.html -> пропишем в место <title>Главная страница</title> шаблон <title>{{ title }}</title>
+в coolsite/women/templates/women/about.html пропишем тоже самое
+=> далее -> в coolsite/women/views.py -> прописываем третий параметр будет шаблон  render(request, 'women/index.html', {'title': 'Главная страница'})
+-> и для  render(request, 'women/about.html', {'title': 'О сайте'})
+и все работает
+
+    допустим есть список для главного меню
+пишем его в coolsite/women/views.py -> menu = ["О сайте", "Добавить статью", "Обратная связь", "Войти"]
+в def index: -> дописываем в словарть шаблонов 'menu':menu -> render(request, 'women/index.html', {'menu':menu, 'title': 'Главная страница'})
+и в def about: -> также дописываем  'menu':menu
+-> переходим в index.html и прописываем, а также и для about.html
+<ul>
+    {% for m in menu %}
+    <li>{{m}}</li>
+    {% endfor %}
+</ul>
+и видим на страницах    - О сайте
+                        - Добавить статью
+                        - Обратная связь
+                        - Войти
+
+
+________________!!! НО МЫ видим что index.html и about.html ОДИНАКОВЫ  / а какже НЕ ПОВТОРЯЙСЯ_________
+
+И в таких случаях  НУЖНО СОЗДАТЬ  "БАЗОВЫЙ ШАБЛОН представления страниц на сайте в целом"
+=>
+    создаем файл base.html и прописываем в нем
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+        <title>{{ title }}</title>
+</head>
+<body>
+{% block mainmenu %}
+<ul>
+    {% for m in menu %}
+    <li>{{m}}</li>
+    {% endfor %}
+</ul>
+{% endblock mainmenu %}
+
+{% block content %}
+{% endblock %}
+</body>
+</html>
+=> содержимое index.html и about.html удаляем и прописываем
+{% extends 'women/base.html' %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<p>Содержимое главной страницы</p>
+{% endblock %}
+
+----------------------------------------
+ОТОБРАЗИМ чтение данных с таблицы women и отобразим список статей на главной странице
+
+переходим в coolsite/women/views.py -> импортируем from .models import * (это импортируем coolsite/women/models.py)
+в def index: пропишем  posts = Women.objects.all() <- это выделить все записи / рассматривали в пердыдущем уроке
+и добавляем переменную posts в качестве шаблона -> render(request, 'women/index.html', {'posts':posts, 'menu':menu, 'title': 'Главная страница'})
+в коллекции 'posts' будут хранится все наши модели (все экземпляры-> class Women(models.Model)
+=> переходим в index.html и вместо <p>Содержимое главной страницы</p> добавляем шаблон циклом for перебирая
+<ul>
+    {% for p in posts %}
+    <li>
+        <h2>{{p.title}}</h2>
+        <p>{{p.content}}</p>
+        <hr>
+    </li>
+    {% endfor %}
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

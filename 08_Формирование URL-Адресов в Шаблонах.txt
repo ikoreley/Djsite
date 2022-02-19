@@ -1,0 +1,78 @@
+урок
+https://www.youtube.com/watch?v=CFO4aAsUuUk&list=PLA0M1Bcd0w8xO_39zZll2u1lz_Q-Mwn1F&index=8
+
+    В предыдущем уроке в коде html были заглушки '#' -->  <a href="#"> , теперь сформируем полный код
+    {%url'<URL-адрес или имя маршрута>'[параметры ссылки]%}
+    будет выглядеть так=>   <li class="logo"><a href="{% url 'home_redirect' %}"><div class="logo"></div></a></li>
+  запись маршрутов лучше брать из urls.py -> path('', index, name='home_redirect'), редактировать проще будет если поменяется путь страницы.
+
+добавим на сайте ссылки к пунктам меню
+в файле views.py список 'menu = ["О сайте", "Добавить статью", "Обратная связь", "Войти"]' по меняем список словарей
+menu = [{'title': 'О сайте', 'url_name': 'about'},
+        {'title': 'Добавить статью', 'url_name': 'add_page'},
+        {'title': 'Обратная связь','url_name': 'contact'},
+        {'title': 'Войти','url_name': 'login'},
+в urls.py пропишем пути на страницы
+в views.py пропишем пока функции заглушки
+
+редактируем функцию 'index': создаем словарь параметров чтоб сократить 'return render'
+    paramm = {
+        'posts': posts,
+        'menu': menu,
+        'title': 'Главная страница'
+    }
+    return render(request, 'women/index.html', context=paramm)
+---
+Пропишем эти изменения в HTML
+    <li><a href="{% url m.url_name %}">{{m.title}}</a></li>   \ m.url_name <- это имя берем из -> m.title ,а эти данные из нашего списка словарей меню
+---
+
+Пропишем ссылки на посты
+в urls.py указываем путь--> path('post/<int:post_id>/', show_post, name='post')
+в views.py создаем функцию 'show_post'
+в index.html прописываем эти ссылки:
+    1.Вариант:
+        <p class="link-read-post"><a href="{% url 'post' p.pk %}">Читать пост</a></p>
+         мы знаем что 'p.pk' это индитефикатор записи БД , и в urls <int:post_id> подставится этот id (создастся путь на страницу http://127.0.0.1:8000/post/1/)
+         так как мы меняем адреса динамически такой способ плох если вдруг вместо 'p.pk' будем использовать 'slag'
+         и нужно будет переписывать код
+
+    2.Вариант:
+        создаем в models.py в class Women(models.Model) -функцию->  def get_absolute_url(self):
+        она будет формировать нужный нам маршрут к конкретной записи "reverse('post', kwargs={'post_id': self.pk})"
+        в данном случае будем также ссылаться на 'pk'(id)
+        импортируем->  from django.urls import reverse
+        теперь пропишем в index.html --> <p class="link-read-post"><a href="{{ p.get_absolute_url }}">Читать пост</a></p>
+==> вот так в двух вариантах через {% url **** %} и {{ p.*метод модели* }} можем строить(создавать) ссылки шаблонов страниц нашего сайта
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,131 @@
+урок
+https://www.youtube.com/watch?v=pDB9GSlQ7iY&list=PLA0M1Bcd0w8xO_39zZll2u1lz_Q-Mwn1F&index=18
+
+Примеры пагинации: https://docs.djangoproject.com/en/3.1/topics/pagination/
+API пагинатора: https://docs.djangoproject.com/en/3.1/ref/paginator/
+
+            ____В базовый класс ListView у же встроенна пагинация
+        1. в views.py в "class WomenHome" добавим переменную-->  paginate_by = 3
+    загружаем сервер--> python manage.py runserver , и видим только 3_поста на странице
+
+        2. в функциях представления побольше кода для паганиции
+    -ПРИМЕР: пропишем пагинацию для функции представления "def about"
+def about(request):
+    contact_list =Women.objects.all()      # сохраняем список объектов модели в переменную
+    paginator = Paginator(contact_list, 3) # создаем экземпляр класса Paginator указывая список и кол-во элементов на странице
+    page_number = request.GET.get('page')  # получаем номер страницы с GET запроса
+    page_obj = paginator.get_page(page_number)  # фармируем список элементов текущей страницы
+    return render(request, 'women/about.html', {'page_obj': page_obj, 'menu':menu, 'title': 'О сайте' })
+
+    -в about.html пропишем вместо "<p>Содержимое страницы о сайте"
+    {% for contact in page_obj %}
+    <p>{{ contact }}</p>
+    {% endfor %}
+
+    - видим список из трех имен
+      если введем  http://127.0.0.1:8000/about/?page=2  , получаем 2-ую страницу и видим следующии 3 имени
+      если введем несуществующий номер то попадем на последнюю страницу, если что непонятное то первую страницу
+
+    обойдем список пагинации который возвращает итератор которым можем формировать номера страниц
+    <nav>
+        <ul>
+        {% for p in page_obj.paginator.page_range %}  <--page_range возвращает итератор с помощью которого формируются номера страниц-->
+        <li>
+            <a href="?page={{ p }}">{{ p }}</a>
+        </li>
+        {% endfor %}
+        </ul>
+    </nav>
+
+        4. Делаем отображение списка страниц (пагинацию на главной странице)
+    !!!_ Помещаем в базовый шаблон чтоб не дублировать код пагинации для других страниц _!!!
+    -в base.html после блока кантента пропишем
+            <nav class="list-pages">
+                <ul>
+                    {% for p in paginator.page_range %}
+                        <li class="page-num">
+                            <a href="?page={{ p }}">{{ p }}</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </nav>
+
+    - Появился список страниц, но при выборе страницы не видндо какая выбрана,
+    сделаем чтоб выбранная страница отображалась как текст, а другие оставались иконкой
+    в цикле долавим проверку
+				{% for p in paginator.page_range %}
+
+					{% if page_obj.number == p %}
+						<li class="page-num page-num-selected">{{ p }}</li>
+					{% else %}
+						<li class="page-num">
+							<a href="?page={{ p }}">{{ p }}</a>
+						</li>
+					{% endif %}
+
+				{% endfor %}
+
+        5. Добавим список пагинации на все страницы
+
+        -в views.py в "class WomenCategory"  можно прописать "paginate_by = 3" и все заработает и так везде,
+        но это дублирование кода
+        И мы пропишем этот атрибут в файле utils.py в "class DataMixin:"
+                class DataMixin:
+                    paginate_by = 3
+
+        - Если весь список помещается на страницу то будет отображаться "1" , и это нам не нужно
+        Для этого в базовом шаблоне base.html , в блоке контента обернем его в дополнительное условие
+            		{% if page_obj.has_other_pages %}
+        <!-- условие чтоб не отображалась пагинация страницы если она ОДНА -->
+		<!-- has_other_pages возвращает True если страниц больше чем ОДНА, и False если страница ОДНА-->
+
+                            ***** код пагинации *****
+
+                    {% endif %}
+
+        6. Если постов много то будут отображаться все страницы вряд ,
+        сделаем отображение 2 номера слева и 2 номера справа
+
+        - зададим границы для отображения списка (page_obj.number|add:-2 = page_obj.number = page_obj.number|add:+2)
+               *** <li class="page-num page-num-selected">{{ p }}</li>
+
+                    <!-- {% else %} вместо пропишем код ниже для укорочивания отображения страниц -->
+                    {% elif p >= page_obj.number|add:-2 and p <= page_obj.number|add:2 %}
+
+                ***<li class="page-num">
+
+        Но не видно сколько страниц есть ли еще страницы
+
+        7. Добавим стрелки для перехода на пердыдущую - последующую страницы
+
+        -в блоке контента ПЕРЕД циклом пагинации пропишем:
+            {% if page_obj.has_previous %}
+				<li class="page-num">
+					<a href="?page={{ page_obj.previous_page_number }}">&lt;</a>
+				</li>
+		    {% endif %}
+
+        -в блоке контента ПОСЛЕ циклом пагинации пропишем:
+            {% if page_obj.has_next %}
+				<li class="page-num">
+					<a href="?page={{ page_obj.next_page_number }}">&lt;</a>
+				</li>
+		    {% endif %}
+
+		8. Для пагинации сортировка имеет важное значение и если мы ее отключим
+		в models.py в "class Women->class Meta" -> #ordering = [ 'title',]  , то выйдет предупреждение
+UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list: <class 'women.models.Women'> QuerySet.
+
+           !!!_ Лучше чтоб сортировка была включена , хоть какая-нибудь __!!!
+
+
+
+
+
+
+
+
+
+
+
+

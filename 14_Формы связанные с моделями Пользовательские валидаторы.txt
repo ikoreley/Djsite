@@ -1,0 +1,50 @@
+урок
+https://www.youtube.com/watch?v=M6n0Kl_qg3Q&list=PLA0M1Bcd0w8xO_39zZll2u1lz_Q-Mwn1F&index=14
+
+в "class Women" (models.py) и "class AddPostForm" (forms.py) есть дублирование кода из-за несвязанной формы модели.
+и поэтому когда форма тесно связана с моделью лучше ее на прямую и связать
+
+        1. унаслудуем class AddPostForm от forms.ModelForm
+class AddPostForm(forms.ModelForm):
+    class Meta:
+        model = Women       # делает сыязь формы с моделью
+        fields = '__all__'  # какие поля нужно отобразить в форме
+
+запускаем сервер-> python manage.py runserver  , и видим все поля модели "Women" в форме
+---но на практике желательно явно указывать нужные поля, поменяем
+        field = ['title', 'slug', 'content', 'is_published', 'cat']
+
+---настраиваем окно ввода текста статьи
+        widget = {
+        'title': forms.TextInput(attrs={'class': 'form-input'}),
+        'content': forms.Textarea(attrs={'cols': 60, 'row': 10}),}
+
+---вместо черточек в категории напишем "Категория не выбрана"
+пропишем конструктор в классе
+class AddPostForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs) # отработки стандартой формы класса
+        self.fields['cat'].empty_label = "Категория не выбрана" # меняем поле
+
+        2. в этом классе есть свое сохранение в базу данных
+в views.py в "def add_page" убираем строку "Women.objects.create(**form.cleaned_data)"
+и вместо пропишем form.save() , и этот метод сам генерирует сообщение об ошибке и нет необходимости в блоке "try"
+
+        3. добавим поле ФОТО
+    field = ['title', 'slug', 'content', 'photo', 'is_published', 'cat']
+для коректной загрузки изображений в views.py в "def add_page" добавим
+    form = AddPostForm(request.POST, request.FILES)
+и в файле add_page.html  добавим---> enctype="multipart/form-data"  прописывать нужно когда добавляем файлы и изображения
+    <form action="{% url 'add_page' %}" method="post" enctype="multipart/form-data">
+
+        4. когда стандартных проверок не хватает и нужно сделать свои
+в файле forms.py в "class AddPostForm" добавляем функцию
+#  clean_ + поле которое хотим валидировать
+    def clean_title(self):
+        title = self.cleaned_data['title']
+        if len(title) > 200:
+            raise ValidatoronError('Длина превышает 200 символов')
+        return title
+
+
+
